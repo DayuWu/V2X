@@ -168,4 +168,21 @@ plot(model, xvar = "lambda")
 ```
 With this model we may help to predict consumption of cars around this area, which would certainly be beneficial for local gas stations.
 
+## Other things we may include in driving behavior
+
+One thing should be mention: the number of sudden acceleration. 
+
+If a driver undergoes to many sudden accelerations, then the road condition can't be very good or the driver can't be very skillful.
+
+```{r}
+plot(dspeedts>10)
+plot(dspeedts>7)
+plot(dspeedts>5)
+plot(dspeedts>3)
+```
+
+
+
+
+## To Be Continued
 To better value and test our models, we then apply and develop them in data2
