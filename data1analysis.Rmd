@@ -1,0 +1,171 @@
+---
+title: "Data1 Analysis"
+author: "wudayu PB19030934"
+date: "12/16/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Read data1
+```{r}
+data1<-read.csv("~/Desktop/data1.csv")
+head(data1,10)
+```
+## Trail
+It starts at (122.0951,	40.20291)	and goes northwestern reaching (122.0711,	40.21057) before gets back.
+
+The destinatoin locates at (122.1018,	40.17257).
+```{r}
+longitude<-data1$LONG
+latitude<-data1$LAT
+plot(x=longitude,y=latitude,title("Trail of the car"))
+```
+## Descriptive Statistics
+```{r}
+summary(data1)
+```
+
+
+## Distributions of numerics
+```{r}
+consumption<-data1$CONSUM
+acceleration<-data1$LONGACC
+speed<-data1$SPEED
+wheel<-data1$WHEEL
+distance<-data1$CUMDIS
+hist(consumption, main = paste("Histogram of consumption"))
+hist(acceleration, main = paste("Histogram of acceleration"))
+hist(speed, main = paste("Histogram of speed"))
+hist(wheel, main = paste("Histogram of wheel"))
+hist(distance, main = paste("Histogram of distance"))
+```
+## Explanation of histogram
+
+1. Firstly, note that if we ignore the relatively small data (first bar in each histogram) in CONSUM, SPEED and WHEEL, it seems we'll have a more norm like distribution. This implies that sometimes the driving speed is low while in other times the speed has a norm-like distribution. It could be easily explained if we consider this scenario, at crosses and turnings, the speed slows down to a level. And if we don't consider these slowing down, the speed behaves like many other variables largely holding a norm distribution.
+
+2. The Histogram of distance seems quite abnormal because that if we have a continuous stable record of one certain car, then it would seem like a uniform distribution.
+
+However, since data is collected on a 15 seconds basis, the more one certain number occurred in cumulative distance, the longer the driver stayed in that road section, which leads to a low average speed in that place.
+
+Then we may conclude that the driver followed such a driving history:
+
+At the beginning, the car might be around certain district that only allows low speed driving, such as business circle, busy main road, etc.
+
+Then the car sped up till entered another district with limitation.
+
+After that the car might get on the highway and keep going with a relatively high speed.
+
+Suddenly, it got stuck at around distance 3138 for a long time, which might be an accidence. 
+
+Finally, it continue to go.
+
+## Correlation
+```{r}
+M<-cor(data1[-1])
+M
+library(Hmisc)
+rcorr(as.matrix(data1[-1]))
+library(corrplot)
+corrplot(method="square",M)
+```
+
+1. Clearly, distance, longitude and latitude are all closely related. Since the car goes largely towards southeast, distance certainly would have separately a positive and negative relationship with longitude and latitude.
+
+2. Note that consumption is closely related with acceleration and speed, while acceleration is related with wheel. 
+
+3. Taking the road condition into consideration, speed and consumption have something to do with longitude and latitude.
+
+4. It's interesting to find that speed and wheel are closely related.
+
+## Stationarity Analysis
+
+When it comes to the driving behavior, stationary is most important thing we would consider first.
+
+To picture the stationary of this drive, we ought to analysis variable speed using timeseries techniques.
+```{r}
+speedts<-ts(speed, start=1, end=1575)
+plot(speedts,type='l',main='Speed against Time')
+
+library(forecast)
+library(tseries)
+acf(speedts)
+pacf(speedts)
+Box.test(speedts,type = "Ljung-Box") 
+ndiffs(speedts)
+dspeedts <- diff(speedts)
+plot(dspeedts)
+acf(dspeedts)
+pacf(dspeedts)
+Box.test(dspeedts,type = "Ljung-Box") 
+```
+
+From the ACF and PACF graph, we find that ARIMA(1,1,3) is what we need for speedts.
+
+To double check this result, we then apply auto.arima to this data and the results support our conclusion above.
+
+```{r}
+fit.speed<-auto.arima(speedts)
+summary(fit.speed)
+checkresiduals(fit.speed)
+qqnorm(fit.speed$residuals)
+qqline(fit.speed$residuals)
+```
+As the model settled down, some simple predictions are made as below.
+
+```{r}
+forecast(fit.speed,10,level=c(99.5))
+plot(forecast(fit.speed,60))
+```
+Well, it seems that the party is over and no one would be on the raod :)
+
+## Stationary Analysis 2
+Apart from stationary of speed we get as above , LONGACC is a similar index for stationary of machine. 
+
+We wonder whether these two characters will behave similarly. Or namely, ARIMZ(1,0,3) for LONGACC?
+
+```{r}
+accts<-ts(acceleration,start=1,end=1575,frequency = 60)
+plot(accts)
+acf(accts)
+pacf(accts)
+Box.test(accts,type = "Ljung-Box") 
+ndiffs(accts)
+fit.accts<-arima(accts,order=c(1,0,3))
+checkresiduals(fit.accts)
+```
+The ACF graph shows that ARIMA(1,0,3) is not suitable for acceleration. 
+
+This implies that acceleration get form sensor do not coordinate with acceleration get from speed. 
+
+BUT WHY?
+
+We think that LONGACC may be a acceleration along longitude thus shows a regular pattern and do not fit ARIMA model constructed on speed.
+
+## Consumption Model
+Consumption is very important for both driver and supplier.
+
+From the correlation matrix and significance, we note that all factors are significantly (linearly) related with CONSUM.
+
+Thus we now consider to predict CONSUM with other factors.
+
+Since in this data set, outliers would greatly influence the performance of OLS and we apply ridge regression here.
+
+```{r}
+library(glmnet)
+y<-scale(consumption)
+x<-as.matrix(cbind(scale(longitude),scale(latitude),scale(speed),scale(wheel),scale(acceleration),scale(distance)))
+model <- glmnet(x, y, alpha = 0)
+cv_model <- cv.glmnet(x, y, alpha = 0)
+best_lambda <- cv_model$lambda.min
+best_lambda
+plot(cv_model) 
+best_model <- glmnet(x, y, alpha = 0, lambda = best_lambda)
+coef(best_model)
+plot(model, xvar = "lambda")
+```
+With this model we may help to predict consumption of cars around this area, which would certainly be beneficial for local gas stations.
+
+To better value and test our models, we then apply and develop them in data2
