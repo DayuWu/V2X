@@ -181,6 +181,15 @@ plot(dspeedts>5)
 plot(dspeedts>3)
 ```
 
+Driver Variability
+
+Another way to show stability is to plot(speed(t),speed(t+1)).
+
+Dots below the diagnose are outliers with relatively significant change of speed.
+
+```{r}
+plot(x=speed[1:1574],y=speed[2:1575])
+```
 
 
 
