@@ -1,0 +1,136 @@
+---
+title: "Data2 Analysis"
+author: "wudayu PB19030934"
+date: "12/16/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Import data2
+```{r}
+data2<-read.csv("~/desktop/data2.csv")
+head(data2,n=10)
+```
+## Descriptive Statistics
+```{r}
+summary(data2)
+```
+## Variables
+```{r}
+distance<-data2$DIST
+drvtime<-data2$DRVTIME
+speedavg<-data2$SPEED_AVG
+speedsd<-data2$SPEED_SD 
+speedmax<-data2$SPEED_MAX 
+stability<-data2$STAB
+wheelavg<-data2$WHEEL_AVG 
+wheelsd<-data2$WHEEL_SD
+wheelmax<-data2$WHEEL_MAX
+rushour<-data2$RUSHOUR
+night<-data2$NIGHT
+jam<-data2$JAM
+highspeed<-data2$HIGHSPEED 
+tired<-data2$TIRED 
+num<-data2$NUM
+
+```
+## Distribution Information
+```{r}
+layout(matrix(c(1,2,3,4,5,6,7,8,9), 3,3, byrow = TRUE))
+hist(speedavg)
+hist(distance)
+hist(drvtime)
+hist(stability)
+hist(rushour)
+hist(night)
+hist(jam)
+hist(highspeed)
+hist(tired)
+```
+
+From the distribution bars, we find that distance, driving time, rush hour, night, high speed, jam are all have very high density near 0, which explains that most time they drive not very long, not very quick, seldom in night and meet jam.
+
+However, another high density point appear at rushour=1, which could be easily explained if drivers are commuters living in city.
+
+ALso stability and jam show a norm-like distribution.
+
+## Dirving behavior of each driver
+
+```{r}
+layout(matrix(c(1,2,3,4,5,6,7,8,9,10,11,12), 3,4, byrow = TRUE))
+boxplot(speedavg~num)
+boxplot(speedmax~num)
+boxplot(speedsd~num)
+boxplot(wheelavg~num)
+boxplot(distance~num)
+boxplot(drvtime~num)
+boxplot(stability~num)
+boxplot(rushour~num)
+boxplot(night~num)
+boxplot(jam~num)
+boxplot(highspeed~num)
+boxplot(tired~num)
+```
+
+## Factor Analysis
+
+Here we apply factor analysis to extract most important things to illustrate driving behavior.
+
+### Method 1: PCA
+```{r}
+data2l<-cbind(distance,drvtime,highspeed,jam,night,rushour,speedavg,speedmax,speedsd,stability,tired,wheelavg,wheelmax,wheelsd)
+screeplot(princomp(scale(data2l)),type="lines")
+summary(princomp(scale(data2l)))
+```
+
+### Method 2: Factor analysis
+```{r}
+library(corrplot)
+M<-cor(data2l)
+corrplot(M)
+
+fit3 <- factanal(data2l, 3, rotation="varimax")
+print(fit3,sort=TRUE)
+
+fit4 <- factanal(data2l, 4, rotation="varimax")
+print(fit4,sort=TRUE)
+
+fit5 <- factanal(data2l, 5, rotation="varimax")
+print(fit5,sort=TRUE)
+```
+
+### Method 3: Kmeans
+
+```{r}
+library(factoextra)
+fviz_nbclust(scale(data2l), kmeans, method = "wss") + geom_vline(xintercept = 5, linetype = 2)+geom_vline(xintercept = 4, linetype = 2)
+fviz_cluster(kmeans(scale(data2l),4),data = scale(data2l),
+             ellipse.type = "euclid",
+             star.plot = TRUE, 
+             repel = TRUE,
+             ggtheme = theme_minimal()
+)
+fviz_cluster(kmeans(scale(data2l),5),data = scale(data2l),
+             ellipse.type = "euclid",
+             star.plot = TRUE, 
+             repel = TRUE,
+             ggtheme = theme_minimal()
+)
+```
+
+
+Then finally we may conclude that 4 factors are sufficient and good enough.
+
+Based on these 4 items we may score each driver to define their driving behaviors  and characters.
+
+## Driving Scale
+```{r}
+temp=table(num,kmeans(scale(data2l),4)$cluster) 
+temp.scale=apply(temp,1,function(x) x/sum(x))
+colors=c(2,3,4,5)
+classification=c("Dim 1","Dim 2","Dim 3","Dim  4")
+barplot(temp.scale,main = "Driving Score",xlab = "scale",ylab = "num",col = colors,horiz=T, legend.text=paste("Dim",c(1:4),sep=""), args.legend=list(x="right",bty="n"))
+```
