@@ -1,0 +1,1 @@
+time(TIME), longitude(LONG) ,latitude(LAT) ,fuel consumption (CONSUM),acceleration(LONGACC) ,speed(SPEED) ,engine speed(WHEEL) ,cumulative distance.
